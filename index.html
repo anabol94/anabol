@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Голосовой ввод состава</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f2f2f2; }
+    button { padding: 10px 20px; font-size: 16px; margin: 10px 0; }
+    #output { margin-top: 10px; font-weight: bold; }
+    video, canvas { max-width: 100%; margin-top: 20px; display: block; }
+    #error { color: red; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h2>🎤 Голосовой ввод</h2>
+  <button onclick="startListening()">Начать запись</button>
+  <p id="output">Текст появится здесь...</p>
+  <p id="error"></p>
+
+  <h2>📸 Фото с камеры</h2>
+  <video id="video" autoplay playsinline muted></video><br>
+  <button onclick="takePhoto()">Сделать фото</button>
+  <canvas id="canvas"></canvas>
+
+  <script>
+    const output = document.getElementById('output');
+    const errorDisplay = document.getElementById('error');
+
+    // Проверка на HTTPS — доступ к камере невозможен на HTTP в большинстве браузеров
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+      errorDisplay.textContent = 'Для доступа к камере требуется HTTPS-соединение';
+    }
+
+    // Speech Recognition (Web Speech API)
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = SpeechRecognition ? new SpeechRecognition() : null;
+
+    if (recognition) {
+      recognition.lang = 'ru-RU';
+      recognition.interimResults = false;
+
+      function startListening() {
+        recognition.start();
+      }
+
+      recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        output.textContent = transcript;
+        window.ReactNativeWebView?.postMessage(transcript);
+      };
+
+      recognition.onerror = function(event) {
+        output.textContent = 'Ошибка: ' + event.error;
+      };
+    } else {
+      output.textContent = 'Голосовой ввод не поддерживается в этом браузере';
+    }
+
+    // Camera API
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+
+    async function setupCamera() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        errorDisplay.textContent = 'Камера не поддерживается в этом браузере';
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        video.srcObject = stream;
+      } catch (err) {
+        console.error('Ошибка камеры:', err);
+        errorDisplay.textContent = 'Ошибка доступа к камере: ' + err.message;
+      }
+    }
+
+    function takePhoto() {
+      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0);
+        const imageData = canvas.toDataURL('image/png');
+        window.ReactNativeWebView?.postMessage(imageData);
+      } else {
+        errorDisplay.textContent = 'Камера ещё не готова';
+      }
+    }
+
+    window.addEventListener('load', () => {
+      if (location.protocol === 'https:' || location.hostname === 'localhost') {
+        setupCamera();
+      }
+    });
+  </script>
+</body>
+</html>
