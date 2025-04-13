@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Material composition</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f2f2f2; }
+    button { padding: 10px 20px; font-size: 16px; margin: 10px 0; }
+    #output { margin-top: 10px; font-weight: bold; }
+    #error { color: red; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h2>🎤 Material composition</h2>
+  <button onclick="startListening()">Start Recording</button>
+  <p id="output">Speech text will appear here...</p>
+  <p id="error"></p>
+
+  <script>
+    const output = document.getElementById('output');
+    const errorDisplay = document.getElementById('error');
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = SpeechRecognition ? new SpeechRecognition() : null;
+
+    if (recognition) {
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+
+      function startListening() {
+        recognition.start();
+      }
+
+      recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        output.textContent = transcript;
+        window.ReactNativeWebView?.postMessage(transcript);
+      };
+
+      recognition.onerror = function(event) {
+        output.textContent = 'Error: ' + event.error;
+      };
+    } else {
+      output.textContent = 'Speech recognition is not supported in this browser';
+    }
+  </script>
+</body>
+</html>
